@@ -31,12 +31,12 @@ risk of failure decreases.
 The relative changes are:
 ```
 $ python promo.py
-i | vs[i] | 1/vs[i] | 1/vs[i] - 1/vs[i+1]
-0 |     4 |   0.250 |              0.0833
-1 |     6 |   0.167 |              0.0417
-2 |     8 |   0.125 |              0.0417
-3 |    12 |   0.083 |              0.0333
-4 |    20 |   0.050 |              0.0000
+  i | vs[i] | 1/vs[i] | 1/vs[i] - 1/vs[i+1]
+  0 |     4 |   0.250 |              0.0833
+  1 |     6 |   0.167 |              0.0417
+  2 |     8 |   0.125 |              0.0417
+  3 |    12 |   0.083 |              0.0333
+  4 |    20 |   0.050 |              0.0000
 ```
 
 That is, the expected number of failures decreases most with the first
@@ -44,6 +44,9 @@ promotion, and (weakly) less with each subsequent promotion.
 
 So, the greedy strategy of always promoting the lowest ranked die is best to
 maximize future reward.
+
+(Note, the example playthrough on the original blog post elided the `d10` die,
+so I have also skipped it here. Including it does break the greedy sub-strategy)
 
 ## Never Skip
 
