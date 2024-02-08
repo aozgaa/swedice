@@ -40,44 +40,41 @@ class DiceState:
         self.dice = [0 for i in range(len(DVAL))]
 
     def __str__(self):
-        return f"{{ d4: {self.d4}, d6: {self.d6}, d8: {self.d8}, d12: {self.d12}, d20: {self.d20} }}"
+        return f"{{ d4: {self.dice[0]}, d6: {self.dice[1]}, d8: {self.dice[2]}, d12: {self.dice[3]}, d20: {self.dice[4]} }}"
 
     def __bool__(self):
         return sum(self.dice) > 0
 
     def check(self):
         for k,v in DIDX.items():
+            assert(self.dice[v] >= 0)
             assert(self.dice[v] <= DMAX[v])
 
 class GameState:
     def __init__(self):
         self.score = 0
         self.round = 0
-        self.dice = defaultdict(int) # fixme: use DiceState
-        self.legacy = defaultdict(int) # fixme: use DiceState
+        self.revenue = DiceState()
+        self.legacy = DiceState()
 
     def check_invariants(self):
-        for v in self.dice.values():
-            assert(v > 0)
-        for v in self.legacy.values():
-            assert(v > 0)
-        if not self.dice:
-            assert(self.score == 0)
+        self.revenue.check()
+        self.legacy.check()
+        assert(self.revenue or self.score == 0)
     
 def print_state(state):
     print(f"# round: {state.round} / {ROUNDS}\nscore: {state.score}")
-    print("dice: ", end="")
-    pprint.pprint(state.dice)
-    print("legacy: ", end="")
+    print("revenue: ", end="")
+    pprint.pprint(state.revenue)
+    print("legacy:  ", end="")
     pprint.pprint(state.legacy)
 
 def get_actions(state):
     assert(not state.legacy)
     res = [Action.NEW_DIE]
-    for k in state.dice.keys():
-        idx = DIDX[k]
-        if idx < len(DPROMO):
-            res.append(DPROMO[idx])
+    for i,p in enumerate(DPROMO):
+        if state.revenue.dice[i] > 0:
+            res.append(p)
     return res
 
 class Game:
@@ -107,52 +104,38 @@ class Game:
 
 
     def new_die(self):
-        self.state.check_invariants()
         assert(not self.state.legacy)
 
-        self.state.dice[4] += 1
+        self.state.revenue.dice[0] += 1
 
     def promote(self, val):
-        self.state.check_invariants()
         assert(not self.state.legacy)
-        assert(self.state.dice[val] > 0)
+        idx = DIDX[val]
+        assert(self.state.revenue.dice[idx] > 0)
 
-        self.state.dice[val] -= 1
-        if self.state.dice[val] == 0:
-            del self.state.dice[val]
-
-        self.state.dice[DNEXT[DIDX[val]]] += 1
-        self.state.check_invariants()
+        self.state.revenue.dice[idx] -= 1
+        self.state.revenue.dice[idx+1] += 1
 
     def fix_legacy(self):
-        self.state.check_invariants()
         assert(self.state.legacy)
-        val = sorted(self.state.legacy.keys())[-1]
-        assert(self.state.legacy[val] > 0)
+        k = 0
+        for i,v in enumerate(self.state.legacy.dice):
+            if v > 0:
+                k = i
 
-        self.state.legacy[val] -= 1
-        if self.state.legacy[val] == 0:
-            del self.state.legacy[val]
-        self.state.dice[val] += 1
-        self.state.check_invariants()
+        self.state.legacy.dice[k] -= 1
+        self.state.revenue.dice[k] += 1
 
     def roll(self):
-        self.state.check_invariants()
-        for k,v in self.state.dice.items():
-            # zeroes = random.binomalvariate(v, 1/k) # added python 3.12
-            ones = sum(random.random() < 1/k for i in range(v))
-            self.state.score += v - ones
-            self.state.dice[k] -= ones
-            if ones > 0:
-                self.state.legacy[k] += ones
+        for i,cnt in enumerate(self.state.revenue.dice):
+            if cnt == 0: continue
+            ones = sum(random.random() < 1/DVAL[i] for _ in range(cnt))
+            self.state.score += cnt - ones
+            self.state.revenue.dice[i] -= ones
+            self.state.legacy.dice[i] += ones
 
-        for k in list(self.state.dice.keys()):
-            if self.state.dice[k] == 0:
-                del self.state.dice[k]
-
-        if not self.state.dice:
+        if not self.state.revenue:
             self.state.score = 0
-        self.state.check_invariants()
 
 class Policy(ABC):
     @abstractmethod
@@ -212,6 +195,38 @@ class PromoOncePolicy(Policy):
             return Action.PROMOTE4
         return Action.NEW_DIE
 
+
+# Try to promote when the expected number of failures reaches some threshold
+class ExpLegacyPolicy(Policy):
+    def __init__(self, beta):
+        self.beta = beta
+
+    # @override # python 3.12
+    def get_action(self, state):
+        actions = get_actions(state)
+        e_failures = 0
+        for i,cnt in enumerate(state.revenue.dice):
+            e_failures += cnt * 1/DVAL[i]
+        if e_failures < self.beta or len(actions) == 1:
+            return Action.NEW_DIE
+        return actions[1]
+
+class EL2Policy(ExpLegacyPolicy):
+    def __init__(self):
+        super().__init__(0.9)
+
+class EL5Policy(ExpLegacyPolicy):
+    def __init__(self):
+        super().__init__(0.5)
+
+class EL9Policy(ExpLegacyPolicy):
+    def __init__(self):
+        super().__init__(0.9)
+
+class EL20Policy(ExpLegacyPolicy):
+    def __init__(self):
+        super().__init__(2.0)
+
 class RandPolicy(Policy):
     def __init__(self):
         pass
@@ -221,16 +236,10 @@ class RandPolicy(Policy):
         actions = get_actions(state)
         return random.choice(actions)
 
-# class DPPolicy(Policy):
-#     def __init__(self):
-#         assert(ROUNDS == 10) # assumed throughout
-#         self.d2s = {} # number of active dies to state
-#         V[round][score][dies]
-
 # score = play_policy(ManualPolicy())
 # print(f"final score: {score}")
 
-for cls in [NewOnlyPolicy, PromoPolicy, PromoOncePolicy, RandPolicy]:
+for cls in [NewOnlyPolicy, PromoPolicy, PromoOncePolicy, EL2Policy, EL5Policy, EL9Policy, EL20Policy, RandPolicy]:
     inst = cls()
     avg = sum(play_policy(inst) for i in range(10000)) / 10000
     print(f"{cls.__name__:18}: {avg:9}")
