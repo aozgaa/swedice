@@ -2,8 +2,8 @@
 Explorations for Ben Rady's SWE dice game:
 https://www.benrady.com/2023/01/the-software-engineering-game.html
 
-* sim: environment for playing the game including some sample policies
-* dp.py: solver for exact optimal strategy
+* `sim.py`: environment for playing the game including some sample policies
+* `dp.py`: solver for exact optimal strategy
 
 # Setup and Running
 We need a couple python packages as dependencies, get them in the preferred way (eg: `venv`):
@@ -61,7 +61,7 @@ So, the greedy strategy of always promoting the lowest ranked die is best to
 maximize future reward.
 
 (Note, the example playthrough on the original blog post elided the `d10` die,
-so I have also skipped it here. Including it does break the greedy sub-strategy)
+so I have also skipped it here. Including it does break this greedy sub-strategy)
 
 ## Never Skip
 
@@ -75,23 +75,6 @@ creating or promoting a dice:
 It is straightforward but tedious to formalize these observations in the
 language of MDP's (hint: use the law of total expectation to decompose the
 cases).
-
-## TODO: Score Symmetry
-
-TODO: how does having a high working score affect strategy?
-* Penalty of zeroing out is higher.
-* is there a "retirement cliff" effect prioritizing avoiding catastrophe?
-  + it seems that having more reliable systems is highly valuable in longer
-    games even absent this effect, so it is probably not affecting policy in
-    many states, might be okay to truncate/compress this part of state
-
-2) score: If a round starts in state `S` with score `s` or `s'`, and we are
-taking action `A`. Then the relative effect of getting a catastrophic failure
-is worse if have a higher score. Suppose we have probability `p` of failing.
-Then with score `s` our EV is something like:
-```
-p*0 + (1-p)*v(
-```
 
 # Varying Rounds
 
@@ -136,16 +119,28 @@ $ python dp.py
 20.483601957243238
 ```
 
-The program currently crashes with memory limits if the instance size exceeds 11. Optimization opportunities:
+The program currently crashes with memory limits if the instance size exceeds
+11. Optimization opportunities:
 * implict score representation: the score is only needed for catastrophic
   failure penalty calculations. The probability of a catastrophic failure
   within one step is known (some independent binomial distribution tails
   multiplied). There might be an analytic way to telescope for multiple steps
 * dice representations:
-  * currently allocate a slot in each dimension as if all dice were of the singular type and no failures are ever observed, it is impossibly for these to simultaneously be true
-  * we could do indexing on the basis of the volume of lower-dimensional simplices (Erhardt polynomials) to get a dense representation
-  * we also size the legacy dice as if they are independent of the revenue dice, but this wastes space (eg: can't have 10 revenue and legacy dice at the same time)
+  * currently allocate a slot in each dimension as if all dice were of the
+    singular type and no failures are ever observed, it is impossibly for these
+    to simultaneously be true
+  * we could do indexing on the basis of the volume of lower-dimensional
+    simplices (Erhardt polynomials) to get a dense representation
+  * we also size the legacy dice as if they are independent of the revenue
+    dice, but this wastes space (eg: can't have 10 revenue and legacy dice at
+    the same time)
 * representing legacy dice:
-  * we allocate slots for the legacy dice in the value function as a space-time tradeoff so we do not need to do multiple rolls to figure out the value of the state
-  * otherwise if we have revenue dice d4,d6,...,d20, we would end up "rolling" until we ended the game or had no legacy, effectively computing all paths (maybe down to some epsilon/tail probability or magnitude) to the end of the game
-  * there may be a 10-d simplex we could use for the erhardt polynomial constriants. Maybe wolfram alpha can help with computing the polynomials
+  * we allocate slots for the legacy dice in the value function as a space-time
+    tradeoff so we do not need to do multiple rolls to figure out the value of
+    the state
+  * otherwise if we have revenue dice d4,d6,...,d20, we would end up "rolling"
+    until we ended the game or had no legacy, effectively computing all paths
+    (maybe down to some epsilon/tail probability or magnitude) to the end of
+    the game
+  * there may be a 10-d simplex we could use for the erhardt polynomial
+    constriants. Maybe wolfram alpha can help with computing the polynomials
