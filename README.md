@@ -3,7 +3,7 @@ Explorations for Ben Rady's SWE dice game:
 https://www.benrady.com/2023/01/the-software-engineering-game.html
 
 * sim: environment for playing the game including some sample policies
-* TODO: solver for optimal strategy (dynamic programming?)
+* dp.py: solver for exact optimal strategy
 
 # Symmetries
 
@@ -114,3 +114,23 @@ EL20Policy        :  188.2348
 RandPolicy        :  432.1997
 ```
 
+# dp
+The value of the game with 10 rounds agrees with the `NewOnlyPolicy` in the `sim.py`:
+```
+$ python dp.py
+20.483601957243238
+```
+
+The program currently crashes with memory limits if the instance size exceeds 11. Optimization opportunities:
+* implict score representation: the score is only needed for catastrophic
+  failure penalty calculations. The probability of a catastrophic failure
+  within one step is known (some independent binomial distribution tails
+  multiplied). There might be an analytic way to telescope for multiple steps
+* dice representations:
+  * currently allocate a slot in each dimension as if all dice were of the singular type and no failures are ever observed, it is impossibly for these to simultaneously be true
+  * we could do indexing on the basis of the volume of lower-dimensional simplices (Erhardt polynomials) to get a dense representation
+  * we also size the legacy dice as if they are independent of the revenue dice, but this wastes space (eg: can't have 10 revenue and legacy dice at the same time)
+* representing legacy dice:
+  * we allocate slots for the legacy dice in the value function as a space-time tradeoff so we do not need to do multiple rolls to figure out the value of the state
+  * otherwise if we have revenue dice d4,d6,...,d20, we would end up "rolling" until we ended the game or had no legacy, effectively computing all paths (maybe down to some epsilon/tail probability or magnitude) to the end of the game
+  * there may be a 10-d simplex we could use for the erhardt polynomial constriants. Maybe wolfram alpha can help with computing the polynomials

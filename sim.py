@@ -1,30 +1,26 @@
 import random
 import pprint
-from enum import Enum
+from enum import IntEnum
 from collections import defaultdict
 from abc import ABC, abstractmethod
 
 # from typing import override # python 3.12
 
-# fixme: change to only have following dice: 4,6,8,12,20
-# fixme: just sim turns where there is no choice (ie: legacy dice):
-# * when you have legacy dice, the best action is to fix the highest rank die first
-#   (as it has lower probability of returning to legacy pool before all legacy are fixed)
+class Action(IntEnum):
+    NEW_DIE = (0,)
+    PROMOTE = (1,)
 
-class Action(Enum):
-    NEW_DIE = (1,)
-    PROMOTE4 = (4,)
-    PROMOTE6 = (6,)
-    PROMOTE8 = (8,)
-    PROMOTE12 = (12,)
 
-ROUNDS = 100
+ROUNDS = 10
+
+MAX_SCORE = (
+    ROUNDS * (ROUNDS + 1)
+) / 2  # if we add a new dice every round and never hit a legacy roll
 
 DIDX = {4: 0, 6: 1, 8: 2, 12: 3, 20: 4}
 DVAL = [4, 6, 8, 12, 20]
 DNEXT = [6, 8, 12, 20]
-# coarse upper bound for states
-# fixme: refine to sum of the promote/create actions used is <= ROUNDS
+# coarse upper bound for states (assumes all coins are of the given number)
 DMAX = [
     ROUNDS,
     ROUNDS / 2,
@@ -33,10 +29,7 @@ DMAX = [
     ROUNDS / 5,
 ]
 
-DPROMO = [Action.PROMOTE4, Action.PROMOTE6, Action.PROMOTE8, Action.PROMOTE12]
 
-
-# fixme: use this instead
 class DiceState:
     def __init__(self):
         self.dice = [0 for i in range(len(DVAL))]
@@ -77,9 +70,10 @@ def print_state(state):
 def get_actions(state):
     assert not state.legacy
     res = [Action.NEW_DIE]
-    for i, p in enumerate(DPROMO):
+    for i in range(len(DNEXT)):
         if state.revenue.dice[i] > 0:
-            res.append(p)
+            res.append(Action.PROMOTE)
+            break
     return res
 
 
@@ -94,19 +88,10 @@ class Game:
 
         if action == Action.NEW_DIE:
             self.new_die()
+        elif action == Action.PROMOTE:
+            self.promote()
         else:
-            val = (
-                4
-                if action == Action.PROMOTE4
-                else 6
-                if action == Action.PROMOTE6
-                else 8
-                if action == Action.PROMOTE8
-                else 12
-                if action == Action.PROMOTE12
-                else -1
-            )
-            self.promote(val)
+            assert False
 
         self.roll()
         self.state.round += 1
@@ -120,13 +105,14 @@ class Game:
 
         self.state.revenue.dice[0] += 1
 
-    def promote(self, val):
+    def promote(self):
         assert not self.state.legacy
-        idx = DIDX[val]
-        assert self.state.revenue.dice[idx] > 0
-
-        self.state.revenue.dice[idx] -= 1
-        self.state.revenue.dice[idx + 1] += 1
+        for i in range(len(DNEXT)):
+            if self.state.revenue.dice[i] > 0:
+                self.state.revenue.dice[i] -= 1
+                self.state.revenue.dice[i + 1] += 1
+                return
+        assert False
 
     def fix_legacy(self):
         assert self.state.legacy
@@ -150,11 +136,16 @@ class Game:
         if not self.state.revenue:
             self.state.score = 0
 
-
 class Policy(ABC):
     @abstractmethod
     def get_action(self, state):
         pass
+
+    def __str__(self):
+        return f"{type(self).__name__}()"
+
+    def __format__(self, spec):
+        return format(str(self), spec)
 
 
 def play_policy(policy):
@@ -179,9 +170,7 @@ class ManualPolicy(Policy):
         if action == "N" or action == "NEW_DIE":
             return Action.NEW_DIE
         if action == "P" or action == "PROMOTE":
-            print("which die to promote?")
-            die = int(input())
-            return DPROMO[DIDX[die]]
+            return Action.PROMOTE
 
 
 class NewOnlyPolicy(Policy):
@@ -210,8 +199,8 @@ class PromoOncePolicy(Policy):
     # @override # python 3.12
     def get_action(self, state):
         actions = get_actions(state)
-        if Action.PROMOTE4 in actions:
-            return Action.PROMOTE4
+        if state.revenue.dice[0] > 0:
+            return Action.PROMOTE
         return Action.NEW_DIE
 
 
@@ -230,78 +219,53 @@ class ExpLegacyPolicy(Policy):
             return Action.NEW_DIE
         return actions[1]
 
+    def __str__(self):
+        return f"ExpLegacyPolicy({self.beta})"
 
-class EL2Policy(ExpLegacyPolicy):
-    def __init__(self):
-        super().__init__(0.9)
-
-
-class EL5Policy(ExpLegacyPolicy):
-    def __init__(self):
-        super().__init__(0.5)
-
-
-class EL9Policy(ExpLegacyPolicy):
-    def __init__(self):
-        super().__init__(0.9)
-
-
-class EL20Policy(ExpLegacyPolicy):
-    def __init__(self):
-        super().__init__(2.0)
+    def __format__(self, spec):
+        return format(str(self), spec)
 
 
 class RandPolicy(Policy):
-    def __init__(self):
-        pass
-
-    # @override # python 3.12
-    def get_action(self, state):
-        actions = get_actions(state)
-        return random.choice(actions)
-
-
-class RandLoPolicy(Policy):  # coin flip between new die and promoting the low die
-    def __init__(self):
-        pass
+    def __init__(self, pnew):
+        self.pnew = pnew
 
     # @override # python 3.12
     def get_action(self, state):
         actions = get_actions(state)
         if len(actions) == 1:
             return Action.NEW_DIE
-        return random.choices([actions[0], actions[1]], weights=[1, len(actions) - 1])[
-            0
-        ]
+        return random.choices(actions, cum_weights=[self.pnew, 1])[0]
 
+    def __str__(self):
+        return f"RandPolicy({self.pnew})"
 
-class RandHiPolicy(Policy):  # coin flip between new die and promoting the high die
-    def __init__(self):
-        pass
-
-    # @override # python 3.12
-    def get_action(self, state):
-        actions = get_actions(state)
-        return random.choices([actions[0], actions[-1]], weights=[1, len(actions) - 1])[
-            0
-        ]
+    def __format__(self, spec):
+        return format(str(self), spec)
 
 
 # score = play_policy(ManualPolicy())
 # print(f"final score: {score}")
 
-for cls in [
-    NewOnlyPolicy,
-    PromoPolicy,
-    PromoOncePolicy,
-    EL2Policy,
-    EL5Policy,
-    EL9Policy,
-    EL20Policy,
-    RandPolicy,
-    RandLoPolicy,
-    RandHiPolicy,
-]:
-    inst = cls()
-    avg = sum(play_policy(inst) for i in range(10000)) / 10000
-    print(f"{cls.__name__:18}: {avg:9}")
+def play_strats():
+    for inst in [
+        NewOnlyPolicy(),
+        PromoPolicy(),
+        PromoOncePolicy(),
+        ExpLegacyPolicy(0.2),
+        ExpLegacyPolicy(0.5),
+        ExpLegacyPolicy(0.9),
+        ExpLegacyPolicy(1.0),
+        ExpLegacyPolicy(2.0),
+        RandPolicy(0.1),
+        RandPolicy(0.2),
+        RandPolicy(0.5),
+        RandPolicy(0.8),
+        RandPolicy(0.9),
+        RandPolicy(1),  # same as NewOnlyPolicy
+    ]:
+        avg = sum(play_policy(inst) for i in range(10000)) / 10000
+        print(f"{inst:20}: {avg:9}")
+
+if __name__ == "__main__":
+    play_strats()
