@@ -5,6 +5,21 @@ https://www.benrady.com/2023/01/the-software-engineering-game.html
 * sim: environment for playing the game including some sample policies
 * dp.py: solver for exact optimal strategy
 
+# Setup and Running
+We need a couple python packages as dependencies, get them in the preferred way (eg: `venv`):
+```
+python -m venv venv/
+. venv/bin/activate
+pip install numpy scipy
+```
+Scripts take no arguments, edit variables (eg: `ROUNDS`) to run with different parameters:
+```
+python sim.py
+...
+python dp.py
+...
+```
+
 # Symmetries
 
 The game has certain symmetries that simplify modeling:
