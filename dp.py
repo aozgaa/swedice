@@ -2,7 +2,7 @@ import numpy as np
 import scipy as sp
 from enum import IntEnum
 
-ROUNDS = 14 # crashes at 12...
+ROUNDS = 12  # super slow by 14
 
 MAX_SCORE = (ROUNDS * (ROUNDS + 1)) // 2  # if we add a new dice every round and never hit a legacy roll
 
@@ -73,8 +73,10 @@ def rollv(rnd, score, r4, r6, r8, r12, r20, l4, l6, l8, l12, l20):
                     p12 = binomp(r12, r12_, 1 / DVAL[3])
                     for r20_ in range(r20 + 1):
                         p20 = binomp(r20, r20_, 1 / DVAL[4])
-                        delta = r4_ + r6_ + r8_ + r12_ + r20_
-                        score_ = 0 if delta == 0 else score + delta
+
+                        p = p4 * p6 * p8 * p12 * p20
+                        rev_ = r4_ + r6_ + r8_ + r12_ + r20_
+                        score_ = 0 if rev_ == 0 else score + rev_
                         l4_ = l4 + r4 - r4_
                         l6_ = l6 + r6 - r6_
                         l8_ = l8 + r8 - r8_

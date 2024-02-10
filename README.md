@@ -7,11 +7,13 @@ https://www.benrady.com/2023/01/the-software-engineering-game.html
 
 # The Game
 
-The game is a single player game involving dice with the following number of faces: 4,6,8,12,20
+The game is a single player game involving dice with the following number of
+faces: 4,6,8,12,20
 
 The goal of the game is to maximize the final score.
 
-The game is played for `R` rounds (10 in the original version) with the following state in each round:
+The game is played for `R` rounds (10 in the original version) with the
+following state in each round:
 * the round number
 * the current score
 * the number of d4,d6,...,d20 "revenue" dice the player has
@@ -19,15 +21,13 @@ The game is played for `R` rounds (10 in the original version) with the followin
 
 In the first round the player has no dice and an initial score of 0.
 
-Repeat the following `R` times
-1) if the player has an "legacy" dice, they pick one of them to convert into a revenue die.
-2) Otherwise, the player picks to either:
-  a) add a new d4 to their revenue pool
-  b) promote a "revenue" dice to the next number of faces
-3) The player then rolls all their "revenue" dice:
+Repeat the following `R` times 1) if the player has an "legacy" dice, they pick
+one of them to convert into a revenue die.  2) Otherwise, the player picks to
+either: a) add a new d4 to their revenue pool b) promote a "revenue" dice to
+the next number of faces 3) The player then rolls all their "revenue" dice:
   * any dice landing on `1` go into the legacy pile
-  * increment the score by one for all dice remaining in the "revenue" pile
-4) If there are no "revenue" dice, set the score to 0
+  * increment the score by one for all dice remaining in the "revenue" pile 4)
+    If there are no "revenue" dice, set the score to 0
 
 The player's score is their score at the completion of the final round.
 
@@ -37,13 +37,15 @@ terms of increasing variance while lowering expectation in order to increase
 probability of winning)
 
 # Setup and Running
-We need a couple python packages as dependencies, get them in the preferred way (eg: `venv`):
+We need a couple python packages as dependencies, get them in the preferred way
+(eg: `venv`):
 ```
 python -m venv venv/
 . venv/bin/activate
 pip install numpy scipy
 ```
-Scripts take no arguments, edit variables (eg: `ROUNDS`) to run with different parameters:
+Scripts take no arguments, edit variables (eg: `ROUNDS`) to run with different
+parameters:
 ```
 python sim.py
 ...
@@ -57,11 +59,10 @@ The game has certain symmetries that simplify modeling:
 
 ## Fixing Legacy
 
-We need to fix legacy features.
-
-As all our turns are dedicated to this task until there are no legacy features,
-and the game has positive EV, we should try to fix the more robust features so
-we can get back to making improvements sooner (in expectation).
+When a legacy dice is obtained, we need to fix legacy features. As all our
+turns are dedicated to this task until there are no legacy features, and the
+game has positive EV, we should try to fix the more robust features so we can
+get back to making improvements sooner (in expectation).
 
 So, the optimal strategy whenever there are legacy features is completely
 determined, and we can fix these steps as part of the environment.
@@ -92,7 +93,8 @@ So, the greedy strategy of always promoting the lowest ranked die is best to
 maximize future reward.
 
 (Note, the example playthrough on the original blog post elided the `d10` die,
-so I have also skipped it here. Including it does break this greedy sub-strategy)
+so I have also skipped it here. Including it does break this greedy
+sub-strategy)
 
 ## Never Skip
 
@@ -144,7 +146,8 @@ RandPolicy        :  432.1997
 ```
 
 # dp
-The value of the game with 10 rounds agrees with the `NewOnlyPolicy` in the `sim.py`:
+The value of the game with 10 rounds agrees with the `NewOnlyPolicy` in the
+`sim.py`:
 ```
 $ python dp.py
 20.483601957243238
@@ -155,7 +158,13 @@ The program currently crashes with memory limits if the instance size exceeds
 * implict score representation: the score is only needed for catastrophic
   failure penalty calculations. The probability of a catastrophic failure
   within one step is known (some independent binomial distribution tails
-  multiplied). There might be an analytic way to telescope for multiple steps
+  multiplied). There might be an analytic way to telescope for multiple steps:
+  * Fix `n` dice with `k` faces. Let `p := 1/k` and `q := 1-p`. Then,
+  * probability of all 1's after one roll is is `p^n`
+  * probability within two rolls is is `p^n (1+q)^n`
+  * probability within three rolls is is `p^n (1+q(1 + q))^n`
+  * probability within four rolls is is `p^n (1+q(1 + q(1+q)))^n`
+  * ...
 * dice representations:
   * currently allocate a slot in each dimension as if all dice were of the
     singular type and no failures are ever observed, it is impossibly for these
