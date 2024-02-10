@@ -5,6 +5,37 @@ https://www.benrady.com/2023/01/the-software-engineering-game.html
 * `sim.py`: environment for playing the game including some sample policies
 * `dp.py`: solver for exact optimal strategy
 
+# The Game
+
+The game is a single player game involving dice with the following number of faces: 4,6,8,12,20
+
+The goal of the game is to maximize the final score.
+
+The game is played for `R` rounds (10 in the original version) with the following state in each round:
+* the round number
+* the current score
+* the number of d4,d6,...,d20 "revenue" dice the player has
+* the number of d4,d6,...,d20 "legacy" dice the player has
+
+In the first round the player has no dice and an initial score of 0.
+
+Repeat the following `R` times
+1) if the player has an "legacy" dice, they pick one of them to convert into a revenue die.
+2) Otherwise, the player picks to either:
+  a) add a new d4 to their revenue pool
+  b) promote a "revenue" dice to the next number of faces
+3) The player then rolls all their "revenue" dice:
+  * any dice landing on `1` go into the legacy pile
+  * increment the score by one for all dice remaining in the "revenue" pile
+4) If there are no "revenue" dice, set the score to 0
+
+The player's score is their score at the completion of the final round.
+
+(In a multiplayer variant where palyers compete for the maximum final score and
+process a round in turn order, there could be strategic decisions to make in
+terms of increasing variance while lowering expectation in order to increase
+probability of winning)
+
 # Setup and Running
 We need a couple python packages as dependencies, get them in the preferred way (eg: `venv`):
 ```

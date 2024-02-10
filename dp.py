@@ -2,7 +2,7 @@ import numpy as np
 import scipy as sp
 from enum import IntEnum
 
-ROUNDS = 10  # crashes at 12...
+ROUNDS = 14 # crashes at 12...
 
 MAX_SCORE = (ROUNDS * (ROUNDS + 1)) // 2  # if we add a new dice every round and never hit a legacy roll
 
@@ -22,23 +22,24 @@ class Action(IntEnum):
     PROMOTE = (1,)
 
 
-V = np.zeros(  # dp
-    (
-        ROUNDS,
-        MAX_SCORE + 1,
-        DMAX[0] + 1,  # revenue
-        DMAX[1] + 1,
-        DMAX[2] + 1,
-        DMAX[3] + 1,
-        DMAX[4] + 1,
-        DMAX[0] + 1,  # legacy
-        DMAX[1] + 1,
-        DMAX[2] + 1,
-        DMAX[3] + 1,
-        DMAX[4] + 1,
-    ),
-    dtype=float,
-)
+V = {}
+# V = np.zeros(  # dp
+#     (
+#         ROUNDS,
+#         MAX_SCORE + 1,
+#         DMAX[0] + 1,  # revenue
+#         DMAX[1] + 1,
+#         DMAX[2] + 1,
+#         DMAX[3] + 1,
+#         DMAX[4] + 1,
+#         DMAX[0] + 1,  # legacy
+#         DMAX[1] + 1,
+#         DMAX[2] + 1,
+#         DMAX[3] + 1,
+#         DMAX[4] + 1,
+#     ),
+#     dtype=float,
+# )
 
 DPPolicy = np.zeros(  # dp
     (
@@ -88,9 +89,9 @@ def dpv(rnd, score, r4, r6, r8, r12, r20, l4, l6, l8, l12, l20):
     if rnd >= ROUNDS:
         return score
 
-    vref = V[rnd, score, r4, r6, r8, r12, r20, l4, l6, l8, l12, l20, ...]
-    if vref[()]:
-        return vref[()]
+    v = V.get((rnd, score, r4, r6, r8, r12, r20, l4, l6, l8, l12, l20), None)
+    if v:
+        return v
 
     # check for legacy
     legacyv = 0
@@ -105,8 +106,8 @@ def dpv(rnd, score, r4, r6, r8, r12, r20, l4, l6, l8, l12, l20):
     elif l4:
         legacyv = rollv(rnd, score, r4 + 1, r6, r8, r12, r20, l4 - 1, l6, l8, l12, l20)
     if legacyv:
-        vref[()] = legacyv
-        return vref[()]
+        V[(rnd, score, r4, r6, r8, r12, r20, l4, l6, l8, l12, l20)] = legacyv
+        return legacyv
 
     # add a dice
     addv = rollv(rnd, score, r4 + 1, r6, r8, r12, r20, l4, l6, l8, l12, l20)
@@ -121,13 +122,15 @@ def dpv(rnd, score, r4, r6, r8, r12, r20, l4, l6, l8, l12, l20):
         promov = rollv(rnd, score, r4, r6, r8 - 1, r12 + 1, r20, l4, l6, l8, l12, l20)
     elif r12:
         promov = rollv(rnd, score, r4, r6, r8, r12 - 1, r20 + 1, l4, l6, l8, l12, l20)
+
     if addv >= promov:
         DPPolicy[rnd, score, r4, r6, r8, r12, r20] = 0  # new_die
-        vref[()] = addv
+        V[(rnd, score, r4, r6, r8, r12, r20, l4, l6, l8, l12, l20)] = addv
+        return addv
     else:
         DPPolicy[rnd, score, r4, r6, r8, r12, r20] = 1  # promote
-        vref[()] = promov
-    return vref[()]
+        V[(rnd, score, r4, r6, r8, r12, r20, l4, l6, l8, l12, l20)] = promov
+        return promov
 
 
 # top-down
