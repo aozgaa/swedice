@@ -1,4 +1,5 @@
 import random
+from tabulate import tabulate
 import pprint
 from enum import IntEnum
 from collections import defaultdict
@@ -6,12 +7,13 @@ from abc import ABC, abstractmethod
 
 # from typing import override # python 3.12
 
+
 class Action(IntEnum):
     NEW_DIE = (0,)
     PROMOTE = (1,)
 
 
-ROUNDS = 22
+ROUNDS = 30
 
 MAX_SCORE = (
     ROUNDS * (ROUNDS + 1)
@@ -136,6 +138,7 @@ class Game:
         if not self.state.revenue:
             self.state.score = 0
 
+
 class Policy(ABC):
     @abstractmethod
     def get_action(self, state):
@@ -222,8 +225,35 @@ class ExpLegacyPolicy(Policy):
     def __str__(self):
         return f"ExpLegacyPolicy({self.beta})"
 
-    def __format__(self, spec):
-        return format(str(self), spec)
+
+class PromoThenNewPolicy(Policy):
+    def __init__(self, frac):
+        self.frac = frac
+
+    # @override # python 3.12
+    def get_action(self, state):
+        if state.round >= ROUNDS // self.frac:
+            return Action.NEW_DIE
+        actions = get_actions(state)
+        return actions[-1]  # promo will be last if possible
+
+    def __str__(self):
+        return f"PromoThenNewPolicy({self.frac})"
+
+
+class NewThenPromoPolicy(Policy):
+    def __init__(self, frac):
+        self.frac = frac
+
+    # @override # python 3.12
+    def get_action(self, state):
+        if state.round < ROUNDS // self.frac:
+            return Action.NEW_DIE
+        actions = get_actions(state)
+        return actions[-1]  # promo will be last if possible
+
+    def __str__(self):
+        return f"NewThenPromoPolicy({self.frac})"
 
 
 class RandPolicy(Policy):
@@ -247,7 +277,10 @@ class RandPolicy(Policy):
 # score = play_policy(ManualPolicy())
 # print(f"final score: {score}")
 
+
 def play_strats():
+    runs = 10000
+    table = []
     for inst in [
         NewOnlyPolicy(),
         PromoPolicy(),
@@ -263,9 +296,40 @@ def play_strats():
         RandPolicy(0.8),
         RandPolicy(0.9),
         RandPolicy(1),  # same as NewOnlyPolicy
+        PromoThenNewPolicy(0.1),
+        PromoThenNewPolicy(0.2),
+        PromoThenNewPolicy(0.5),
+        PromoThenNewPolicy(0.8),
+        PromoThenNewPolicy(0.9),
+        NewThenPromoPolicy(0.1),
+        NewThenPromoPolicy(0.2),
+        NewThenPromoPolicy(0.5),
+        NewThenPromoPolicy(0.8),
+        NewThenPromoPolicy(0.9),
     ]:
-        avg = sum(play_policy(inst) for i in range(10000)) / 10000
-        print(f"{inst:20}: {avg:9}")
+        scores = [play_policy(inst) for i in range(runs)]
+        scores.sort()
+        mean = sum(scores) / runs
+        table.append(
+            [
+                str(inst),
+                mean,
+                scores[(runs * 10) // 100],
+                scores[(runs * 20) // 100],
+                scores[(runs * 50) // 100],
+                scores[(runs * 90) // 100],
+                scores[(runs * 95) // 100],
+                scores[(runs * 99) // 100],
+                scores[-1],
+            ]
+        )
+    print(
+        tabulate(
+            table,
+            headers=["policy", "mean", "p10", "p20", "p50", "p90", "p95", "p99", "max"],
+        )
+    )
+
 
 if __name__ == "__main__":
     play_strats()

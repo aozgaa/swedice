@@ -24,7 +24,7 @@ In the first round the player has no dice and an initial score of 0.
 
 Repeat the following `R` times:
 1) if the player has an "legacy" dice, they pick one of them to convert into a
-revenue die. 
+revenue die.
 2) Otherwise, the player picks to either:
   a) add a new d4 to their revenue pool
   b) promote a "revenue" dice to the next number of faces
@@ -39,6 +39,12 @@ The player's score is their score at the completion of the final round.
 process a round in turn order, there could be strategic decisions to make in
 terms of increasing variance while lowering expectation in order to increase
 probability of winning)
+
+# Results Summary
+
+* 10 round game: always create a new die.
+* 30 round game:  promote a dice to a d6 if possible, otherwise create a new die.
+* 100 round game: promote if possible, otherwise create a new die.
 
 # Setup and Running
 We need a couple python packages as dependencies, get them in the preferred way
@@ -131,36 +137,91 @@ cases).
 
 The sample policies greatly vary in their relative performance if the number of rounds changes:
 
+
 ```
-$ python sim.py   # 10 rounds
-NewOnlyPolicy     :   20.4573
-PromoPolicy       :   11.4133
-PromoOncePolicy   :   17.5017
-EL2Policy         :   19.7738
-EL5Policy         :   17.3917
-EL9Policy         :   19.6538
-EL20Policy        :   20.5476
-RandPolicy        :   16.6526
+$ python sim.py          # 10 rounds
+policy                      mean    p10    p20    p50    p90    p95    p99    max
+-----------------------  -------  -----  -----  -----  -----  -----  -----  -----
+NewOnlyPolicy()          20.4285      9     15     21     30     33     38     47
+PromoPolicy()            11.3936      7      9     12     15     15     15     15
+PromoOncePolicy()        17.5299     11     14     18     24     25     28     30
+ExpLegacyPolicy(0.2)     13.8859      8     11     15     18     19     20     20
+ExpLegacyPolicy(0.5)     17.5381      9     14     19     24     25     28     29
+ExpLegacyPolicy(0.9)     19.6407      9     15     21     28     30     33     38
+ExpLegacyPolicy(1.0)     19.8342      9     15     21     28     31     34     39
+ExpLegacyPolicy(2.0)     20.4322      9     15     21     30     33     37     46
+RandPolicy(0.1)          12.6042      7      9     13     17     19     22     35
+RandPolicy(0.2)          13.8666      8     10     14     20     22     25     34
+RandPolicy(0.5)          17.451       9     13     18     25     28     32     40
+RandPolicy(0.8)          19.697      10     14     20     29     31     36     44
+RandPolicy(0.9)          20.1577     10     15     21     29     32     37     48
+RandPolicy(1)            20.4376     10     15     21     30     33     38     48
+PromoThenNewPolicy(0.1)  11.4551      7      9     12     15     15     15     15
+PromoThenNewPolicy(0.2)  11.3855      7      9     12     15     15     15     15
+PromoThenNewPolicy(0.5)  11.4877      7      9     12     15     15     15     15
+PromoThenNewPolicy(0.8)  11.3894      7      9     12     15     15     15     15
+PromoThenNewPolicy(0.9)  11.3881      7      9     12     15     15     15     15
+NewThenPromoPolicy(0.1)  20.4706     10     15     21     30     33     38     48
+NewThenPromoPolicy(0.2)  20.4961     10     15     21     30     33     38     50
+NewThenPromoPolicy(0.5)  20.5538     10     15     21     30     33     37     51
+NewThenPromoPolicy(0.8)  20.4216      9     15     21     30     32     37     48
+NewThenPromoPolicy(0.9)  20.5329     10     15     21     30     33     37     47
 
-$ python sim.py   # 30 rounds
-NewOnlyPolicy     :   70.6989
-PromoPolicy       :   79.5236
-PromoOncePolicy   :   91.8965
-EL2Policy         :   78.4788
-EL5Policy         :   82.4763
-EL9Policy         :   78.4589
-EL20Policy        :   71.5793
-RandPolicy        :   82.9656
+$ python sim.py          # 30 rounds
+policy                      mean    p10    p20    p50    p90    p95    p99    max
+-----------------------  -------  -----  -----  -----  -----  -----  -----  -----
+NewOnlyPolicy()          70.5769     19     49     77    101    109    123    152
+PromoPolicy()            79.6702     67     72     80     92     94     99    104
+PromoOncePolicy()        92.0301     70     78     93    115    122    133    170
+ExpLegacyPolicy(0.2)     79.2237     64     70     80     93     96    102    111
+ExpLegacyPolicy(0.5)     82.5735     62     71     84    102    106    115    126
+ExpLegacyPolicy(0.9)     78.5807     44     63     82    106    113    125    145
+ExpLegacyPolicy(1.0)     77.0499     40     62     81    106    113    125    153
+ExpLegacyPolicy(2.0)     71.3014     20     52     78    102    109    122    149
+RandPolicy(0.1)          80.9594     66     72     82     95     99    106    128
+RandPolicy(0.2)          83.5825     67     73     84    101    105    116    144
+RandPolicy(0.5)          85.8505     62     73     88    110    116    128    153
+RandPolicy(0.8)          78.0927     38     63     83    107    114    126    163
+RandPolicy(0.9)          74.4417     27     58     80    104    112    125    148
+RandPolicy(1)            70.9955     18     50     78    103    109    123    154
+PromoThenNewPolicy(0.1)  79.4273     67     72     80     91     94     99    105
+PromoThenNewPolicy(0.2)  79.5914     67     72     80     91     94     99    105
+PromoThenNewPolicy(0.5)  79.5914     67     72     80     91     94     99    105
+PromoThenNewPolicy(0.8)  79.617      67     72     81     91     94     99    105
+PromoThenNewPolicy(0.9)  79.5999     67     72     80     91     94     99    105
+NewThenPromoPolicy(0.1)  71.4453     19     52     78    103    110    122    158
+NewThenPromoPolicy(0.2)  71.2819     19     51     78    102    109    124    152
+NewThenPromoPolicy(0.5)  71.0014     18     51     78    102    109    123    145
+NewThenPromoPolicy(0.8)  70.939      18     50     78    102    109    123    153
+NewThenPromoPolicy(0.9)  71.5944     21     53     78    102    109    123    165
 
-$ python sim.py   # 100 rounds
-NewOnlyPolicy     :  183.9438
-PromoPolicy       :  652.8854
-PromoOncePolicy   :  411.9217
-EL2Policy         :  392.2955
-EL5Policy         :  540.7135
-EL9Policy         :  392.7529
-EL20Policy        :  188.2348
-RandPolicy        :  432.1997
+$ python sim.py          # 100 rounds
+policy                      mean    p10    p20    p50    p90    p95    p99    max
+-----------------------  -------  -----  -----  -----  -----  -----  -----  -----
+NewOnlyPolicy()          184.625     19     53    194    326    342    371    411
+PromoPolicy()            653.394    592    612    653    715    733    763    829
+PromoOncePolicy()        412.127    353    379    421    482    500    535    613
+ExpLegacyPolicy(0.2)     638.148    571    595    639    704    722    754    818
+ExpLegacyPolicy(0.5)     539.97     457    484    541    624    647    687    798
+ExpLegacyPolicy(0.9)     393.707    300    340    400    487    512    558    689
+ExpLegacyPolicy(1.0)     363.19     250    308    375    463    487    534    659
+ExpLegacyPolicy(2.0)     185.516     18     53    195    327    344    375    453
+RandPolicy(0.1)          617.962    540    571    622    693    711    745    823
+RandPolicy(0.2)          556.315    446    489    565    656    680    722    785
+RandPolicy(0.5)          387.707    282    335    400    493    520    572    691
+RandPolicy(0.8)          262.794     53    134    306    386    407    450    550
+RandPolicy(0.9)          223.601     34     85    269    356    376    411    490
+RandPolicy(1)            185.74      20     55    196    327    342    370    433
+PromoThenNewPolicy(0.1)  652.421    590    612    653    714    730    760    814
+PromoThenNewPolicy(0.2)  654.196    591    613    655    716    734    768    837
+PromoThenNewPolicy(0.5)  652.942    592    612    652    716    734    766    821
+PromoThenNewPolicy(0.8)  653.427    592    613    653    714    731    763    850
+PromoThenNewPolicy(0.9)  652.717    590    611    652    717    733    767    815
+NewThenPromoPolicy(0.1)  184.946     19     54    196    324    342    371    445
+NewThenPromoPolicy(0.2)  184.909     17     50    196    326    343    372    436
+NewThenPromoPolicy(0.5)  184.892     19     54    195    325    341    367    421
+NewThenPromoPolicy(0.8)  186.865     19     56    200    327    342    372    435
+NewThenPromoPolicy(0.9)  185.321     19     55    196    325    341    371    461
 ```
 
 # dp
