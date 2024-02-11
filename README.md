@@ -17,18 +17,21 @@ The game is played for `R` rounds (10 in the original version) with the
 following state in each round:
 * the round number
 * the current score
-* the number of d4,d6,...,d20 "revenue" dice the player has
-* the number of d4,d6,...,d20 "legacy" dice the player has
+* the number of `d4`,`d6`,...,`d20` "revenue" dice the player has
+* the number of `d4`,`d6`,...,`d20` "legacy" dice the player has
 
 In the first round the player has no dice and an initial score of 0.
 
-Repeat the following `R` times 1) if the player has an "legacy" dice, they pick
-one of them to convert into a revenue die.  2) Otherwise, the player picks to
-either: a) add a new d4 to their revenue pool b) promote a "revenue" dice to
-the next number of faces 3) The player then rolls all their "revenue" dice:
+Repeat the following `R` times:
+1) if the player has an "legacy" dice, they pick one of them to convert into a
+revenue die. 
+2) Otherwise, the player picks to either:
+  a) add a new d4 to their revenue pool
+  b) promote a "revenue" dice to the next number of faces
+3) The player then rolls all their "revenue" dice:
   * any dice landing on `1` go into the legacy pile
-  * increment the score by one for all dice remaining in the "revenue" pile 4)
-    If there are no "revenue" dice, set the score to 0
+  * increment the score by one for all dice remaining in the "revenue" pile
+4) If there are no "revenue" dice, set the score to 0
 
 The player's score is their score at the completion of the final round.
 
@@ -54,7 +57,7 @@ python dp.py
 ...
 ```
 
-For the c++ `dp` program, Boost.ContainerHash is used for hashing tuples.
+For the c++ `dp` program, `Boost.ContainerHash` is used for hashing tuples.
 Follow the
 [Getting Started Guide](https://www.boost.org/doc/libs/1_84_0/more/getting_started/index.html)
 to setup.
@@ -169,7 +172,9 @@ $ python dp.py
 ```
 
 The program currently crashes with memory limits if the instance size exceeds
-11. Optimization opportunities:
+11.
+
+## Optimization opportunities:
 * implict score representation: the score is only needed for catastrophic
   failure penalty calculations. The probability of a catastrophic failure
   within one step is known (some independent binomial distribution tails
