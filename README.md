@@ -4,6 +4,7 @@ https://www.benrady.com/2023/01/the-software-engineering-game.html
 
 * `sim.py`: environment for playing the game including some sample policies
 * `dp.py`: solver for exact optimal strategy
+* `dp.cpp`: sovler implementation in c++ that handles larger inputs (up to ~22).
 
 # The Game
 
@@ -51,6 +52,20 @@ python sim.py
 ...
 python dp.py
 ...
+```
+
+For the c++ `dp` program, Boost.ContainerHash is used for hashing tuples.
+Follow the
+[Getting Started Guide](https://www.boost.org/doc/libs/1_84_0/more/getting_started/index.html)
+to setup.
+
+Build with something like
+```
+make dp CXXFLAGS="-std=c++2b -O3"
+```
+and run with
+```
+./dp
 ```
 
 # Symmetries

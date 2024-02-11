@@ -11,7 +11,7 @@ class Action(IntEnum):
     PROMOTE = (1,)
 
 
-ROUNDS = 10
+ROUNDS = 22
 
 MAX_SCORE = (
     ROUNDS * (ROUNDS + 1)
