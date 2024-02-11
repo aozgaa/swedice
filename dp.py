@@ -2,7 +2,7 @@ import numpy as np
 import scipy as sp
 from enum import IntEnum
 
-ROUNDS = 12  # super slow by 14
+ROUNDS = 10 # pretty slow by 18
 
 MAX_SCORE = (ROUNDS * (ROUNDS + 1)) // 2  # if we add a new dice every round and never hit a legacy roll
 
@@ -21,8 +21,12 @@ class Action(IntEnum):
     NEW_DIE = (0,)
     PROMOTE = (1,)
 
-
+# todo: try a representation with sequential memory lookups (array of arrays)
 V = {}
+## too much memory usage for unaccessed cells:
+## * most rounds can't reac MAX_SCORE
+## * can't simultaneously reach DMAX[0] and DMAX[1] on revenue
+## * sum of revenue and legacy for a given number of faces is DMAX[i]
 # V = np.zeros(  # dp
 #     (
 #         ROUNDS,
@@ -59,29 +63,35 @@ DPPolicy = np.zeros(  # dp
 def binomp(N, k, p):
     return sp.special.binom(N, k) * (p ** (N - k)) * ((1 - p) ** k)
 
+# optimization -- precompute/LUT for frequently used operation
+BINOMP = np.zeros((ROUNDS+1, ROUNDS+1, len(DVAL)), dtype=float)
+for N in range(ROUNDS+1):
+    for k in range(ROUNDS+1):
+        for pi in range (len(DVAL)):
+            BINOMP[N,k,pi] = binomp(N,k,1/DVAL[pi])
 
 def rollv(rnd, score, r4, r6, r8, r12, r20, l4, l6, l8, l12, l20):
     res = 0
     rnd_ = rnd + 1
     for r4_ in range(r4 + 1):
-        p4 = binomp(r4, r4_, 1 / DVAL[0])
+        l4_ = l4 + r4 - r4_
+        p4 = BINOMP[r4, r4_, 0]
         for r6_ in range(r6 + 1):
-            p6 = binomp(r6, r6_, 1 / DVAL[1])
+            l6_ = l6 + r6 - r6_
+            p6 = BINOMP[r6, r6_, 1]
             for r8_ in range(r8 + 1):
-                p8 = binomp(r8, r8_, 1 / DVAL[2])
+                l8_ = l8 + r8 - r8_
+                p8 = BINOMP[r8, r8_, 2]
                 for r12_ in range(r12 + 1):
-                    p12 = binomp(r12, r12_, 1 / DVAL[3])
+                    l12_ = l12 + r12 - r12_
+                    p12 = BINOMP[r12, r12_, 3]
                     for r20_ in range(r20 + 1):
-                        p20 = binomp(r20, r20_, 1 / DVAL[4])
+                        l20_ = l20 + r20 - r20_
+                        p20 = BINOMP[r20, r20_, 4]
 
                         p = p4 * p6 * p8 * p12 * p20
                         rev_ = r4_ + r6_ + r8_ + r12_ + r20_
                         score_ = 0 if rev_ == 0 else score + rev_
-                        l4_ = l4 + r4 - r4_
-                        l6_ = l6 + r6 - r6_
-                        l8_ = l8 + r8 - r8_
-                        l12_ = l12 + r12 - r12_
-                        l20_ = l20 + r20 - r20_
                         p = p4 * p6 * p8 * p12 * p20
                         res += p * dpv(rnd_, score_, r4_, r6_, r8_, r12_, r20_, l4_, l6_, l8_, l12_, l20_)
     return res
