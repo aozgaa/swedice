@@ -26,9 +26,12 @@ using DPKey =
 
 unordered_map<DPKey, double, boost::hash<DPKey>> V;
 
-// round,score,revenue dice counts
-int DPPolicy[ROUNDS][MAX_SCORE + 1][DMAX[0] + 1][DMAX[1] + 1][DMAX[2] + 1]
-            [DMAX[3] + 1][DMAX[4] + 1] = {};
+// d4,d6,d8,d12,d20
+using Dice = std::tuple<int, int, int, int, int>;
+// score,revenue
+using PolicyKey = std::tuple<int, Dice>;
+// round,score,revenue
+std::unordered_map<PolicyKey, int, boost::hash<PolicyKey>> DPPolicy[ROUNDS];
 
 double rollv(int rnd, int score, int r4, int r6, int r8, int r12, int r20,
              int l4, int l6, int l8, int l12, int l20);
@@ -36,7 +39,7 @@ double dpv(int rnd, int score, int r4, int r6, int r8, int r12, int r20, int l4,
            int l6, int l8, int l12, int l20);
 
 consteval auto gen_binomp() {
-  double nCk[ROUNDS + 1][ROUNDS + 1]; // n Choose k
+  std::array<std::array<double, ROUNDS + 1>, ROUNDS + 1> nCk{}; // n Choose k
   for (int N = 0; N <= ROUNDS; N++) {
     nCk[N][0] = 1;
   }
@@ -163,10 +166,10 @@ double dpv(int rnd, int score, int r4, int r6, int r8, int r12, int r20, int l4,
   }
 
   if (addv >= promov) {
-    DPPolicy[rnd][score][r4][r6][r8][r12][r20] = Action::NEW_DIE;
+    DPPolicy[rnd][{score, {r4, r6, r8, r12, r20}}] = Action::NEW_DIE;
     return v = addv;
   } else {
-    DPPolicy[rnd][score][r4][r6][r8][r12][r20] = Action::PROMOTE;
+    DPPolicy[rnd][{score, {r4, r6, r8, r12, r20}}] = Action::PROMOTE;
     return v = promov;
   }
 }
@@ -177,23 +180,10 @@ int main() {
   for (int r = 0; r < ROUNDS; ++r) {
     int new_die = 0;
     int promote = 0;
-    int entries = 0;
-    for (int s = 0; s <= MAX_SCORE; ++s) {
-      for (int r4 = 0; r4 <= DMAX[0]; ++r4) {
-        for (int r6 = 0; r6 <= DMAX[1]; ++r6) {
-          for (int r8 = 0; r8 <= DMAX[2]; ++r8) {
-            for (int r12 = 0; r12 <= DMAX[3]; ++r12) {
-              for (int r20 = 0; r20 <= DMAX[4]; ++r20) {
-                entries++;
-                new_die += (int)(DPPolicy[r][s][r4][r6][r8][r12][r20] ==
-                                 Action::NEW_DIE);
-                promote += (int)(DPPolicy[r][s][r4][r6][r8][r12][r20] ==
-                                 Action::PROMOTE);
-              }
-            }
-          }
-        }
-      }
+    int entries = DPPolicy[r].size();
+    for (const auto &[k, v] : DPPolicy[r]) {
+      new_die += (int)(v == Action::NEW_DIE);
+      new_die += (int)(v == Action::PROMOTE);
     }
     cout << "round: " << r << ", entries: " << entries
          << ", new_die: " << new_die << ", promote: " << promote
